@@ -26,7 +26,7 @@ function Header() {
   return (
     <header
       className="flex flex-col md:flex-row items-center px-10 py-7 space-x-5 "
-      style={{ backgroundColor: "#0171DC" }}
+      style={{ backgroundColor: "#0053e2" }}
     >
       <Link href="/" className="mb-5 md:mb-0">
         <Image

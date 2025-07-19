@@ -17,6 +17,8 @@ export interface Result {
 }
 
 export interface Content {
+  page_details: any;
+  results: any;
   url: string;
   organic: Organic[];
   total_results: number;
@@ -66,6 +68,7 @@ export interface Link {
   href: string;
   method: string;
 }
+
 // Define job and context related interfaces if needed
 export interface Job {
   callback_url: string;
