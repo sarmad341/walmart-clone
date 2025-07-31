@@ -1,39 +1,33 @@
 import { Result } from "@/typings/searchTypings";
 
 async function fetchSearch(searchTerm: string): Promise<Result | null> {
-  const username = process.env.OXYLABS_USERNAME;
-  const password = process.env.OXYLABS_PASSWORD;
+  const apiKey = process.env.SERPAPI_API_KEY;
 
-  // console.log("Fetching search for:", searchTerm);
-  // console.log("Has credentials:", {
-  //   hasUsername: !!username,
-  //   hasPassword: !!password,
-  // });
+  console.log("Fetching search for:", searchTerm);
+  console.log("Has API key:", !!apiKey);
 
-  // if (!username || !password) {
-  //   console.error("Missing Oxylabs credentials in environment variables");
-  //   return null;
-  // }
-
-  const newUrl = new URL(
-    `https://www.walmart.com/search?q=${encodeURIComponent(searchTerm)}`
-  );
-
-  const body = {
-    source: "universal_ecommerce",
-    url: newUrl.toString(),
-    geo_location: "United States",
-    parse: true,
-  };
+  if (!apiKey) {
+    console.error("Missing SerpAPI key in environment variables");
+    return null;
+  }
 
   try {
-    const response = await fetch("https://realtime.oxylabs.io/v1/queries", {
-      method: "POST",
-      body: JSON.stringify(body),
+    // Build SerpAPI URL with parameters for Google Shopping
+    const baseUrl = "https://serpapi.com/search.json";
+    const params = new URLSearchParams({
+      engine: "google_shopping",
+      q: searchTerm,
+      api_key: apiKey,
+      gl: "us", // United States
+      hl: "en", // English
+    });
+
+    console.log("Making request to:", `${baseUrl}?${params.toString().replace(apiKey, '***')}`);
+
+    const response = await fetch(`${baseUrl}?${params.toString()}`, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization:
-          "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
       },
       next: {
         revalidate: 60 * 60,
@@ -42,42 +36,71 @@ async function fetchSearch(searchTerm: string): Promise<Result | null> {
 
     console.log("API Response Status:", response.status);
 
-    // if (!response.ok) {
-    //   console.error(
-    //     "API Response not OK:",
-    //     response.status,
-    //     response.statusText
-    //   );
-    //   return null;
-    // }
-
-    const data = await response.json();
-
-    // Log the full API response (this is what you see in terminal)
-    console.log("API Response:", JSON.stringify(data, null, 2));
-
-    // Check if results exists and is an array
-    // if (!data.results || !Array.isArray(data.results)) {
-    //   console.log("No results array found in response");
-    //   return null;
-    // }
-
-    if (data.results.length === 0) {
-      console.log("Results array is empty");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "API Response not OK:",
+        response.status,
+        response.statusText,
+        "Error details:",
+        errorText
+      );
       return null;
     }
 
-    const result: Result = data.results[0];
+    const data = await response.json();
 
-    // Log the actual structure to see what we're working with
-    console.log("Content structure:", {
-      hasOrganic: !!result.content?.organic,
-      hasResults: !!result.content?.results,
-      organicLength: result.content?.organic?.length || 0,
-      resultsLength: result.content?.results?.length || 0,
+    // Log the full API response
+    console.log("API Response:", JSON.stringify(data, null, 2));
+
+    // Check if shopping_results exists and is an array
+    if (!data.shopping_results || !Array.isArray(data.shopping_results)) {
+      console.log("No shopping_results array found in response");
+      return null;
+    }
+
+    if (data.shopping_results.length === 0) {
+      console.log("shopping_results array is empty");
+      return null;
+    }
+
+    // Transform SerpAPI response to match our existing structure
+    const transformedResult: Result = {
+      content: {
+        organic: data.shopping_results.map((item: any) => ({
+          url: item.product_link || "",
+          image: item.thumbnail || "",
+          price: {
+            price: item.extracted_price || parseFloat(item.price?.replace(/[^0-9.]/g, "") || "0"),
+            currency: item.price?.replace(/[0-9.]/g, "") || "$",
+          },
+          title: item.title || "",
+          rating: {
+            count: parseInt(item.reviews?.toString().replace(/[^0-9]/g, "") || "0"),
+            rating: parseFloat(item.rating?.toString() || "0"),
+          },
+          seller: {
+            name: item.source || "Google Shopping",
+          },
+          product_id: item.product_id || item.product_link || "",
+        })),
+        total_results: data.search_information?.total_results || data.shopping_results.length || 0,
+        last_visible_page: data.pagination?.current_page || 1,
+        parse_status_code: response.status,
+        url: data.search_metadata?.status || "success",
+        page_details: {
+          total_results: data.search_information?.total_results || data.shopping_results.length || 0,
+        },
+        results: data.shopping_results,
+      },
+    };
+
+    console.log("Transformed result structure:", {
+      hasOrganic: !!transformedResult.content?.organic,
+      organicLength: transformedResult.content?.organic?.length || 0,
     });
 
-    return result;
+    return transformedResult;
   } catch (err) {
     console.error("Fetch error:", err);
     return null;

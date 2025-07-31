@@ -47,19 +47,15 @@ async function Searchpage({ searchParams }: Props) {
             results)
           </h2>
 
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {/* Use organic products if available, otherwise use results */}
             {(results.content.organic || results.content.results)?.map(
               (product, index) => (
                 <li
                   key={product.product_id || index}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
                 >
                   <Product product={product} />
-                  {/* Display product title below the Product component */}
-                  <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                    {product.title}
-                  </p>
                 </li>
               )
             )}

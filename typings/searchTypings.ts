@@ -58,6 +58,34 @@ export interface Variant {
   product_id: string;
 }
 
+// SerpAPI specific interfaces
+export interface SerpAPIResponse {
+  shopping_results: SerpAPIShopping[];
+  search_information: {
+    total_results: number;
+    query_displayed: string;
+  };
+  pagination: {
+    current_page: number;
+    total_pages: number;
+  };
+  search_metadata: {
+    status: string;
+    created_at: string;
+  };
+}
+
+export interface SerpAPIShopping {
+  link: string;
+  thumbnail: string;
+  price: string;
+  title: string;
+  rating: string;
+  rating_count: string;
+  source: string;
+  product_id?: string;
+}
+
 export interface Context {
   key: string;
   value: any;
