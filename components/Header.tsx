@@ -10,11 +10,35 @@ import {
   User,
   ShoppingCart,
 } from "lucide-react";
-import { FormEvent } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCart } from "@/lib/cartUtils";
 
 function Header() {
   const router = useRouter();
+  const [cart, setCart] = useState({ totalItems: 0, totalPrice: 0 });
+
+  useEffect(() => {
+    // Get cart data on component mount
+    const cartData = getCart();
+    setCart(cartData);
+
+    // Listen for storage changes to update cart count
+    const handleStorageChange = () => {
+      const updatedCart = getCart();
+      setCart(updatedCart);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for cart updates within the same tab
+    window.addEventListener('cartUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cartUpdated', handleStorageChange);
+    };
+  }, []);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -92,13 +116,22 @@ function Header() {
         </Link>
 
         <Link
-          href={"/basket"}
-          className="hidden xl:flex text-white font-bold items-center space-x-2 text-sm"
+          href={"/cart"}
+          className="hidden xl:flex text-white font-bold items-center space-x-2 text-sm relative"
         >
-          <ShoppingCart size={20} />
+          <div className="relative">
+            <ShoppingCart size={20} />
+            {cart.totalItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {cart.totalItems > 99 ? '99+' : cart.totalItems}
+              </span>
+            )}
+          </div>
           <div>
-            <p className="text-xs font-extralight">No Items</p>
-            <p>$0.00</p>
+            <p className="text-xs font-extralight">
+              {cart.totalItems === 0 ? 'No Items' : `${cart.totalItems} Items`}
+            </p>
+            <p>${cart.totalPrice.toFixed(2)}</p>
           </div>
         </Link>
       </div>
